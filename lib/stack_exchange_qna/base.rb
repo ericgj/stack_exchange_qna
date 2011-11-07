@@ -1,8 +1,9 @@
 module StackExchangeQnA
 
-  # Not sure it's advisable to subclass Hashie::Mash. 
-  # Could you instead delegate to an internal instance of Hashie::Mash 
-  # (composition instead of subclass)?  See note on `method_missing` below.
+  # I'm not a fan of Hashie::Mash and related structures OpenStruct, ActiveResource, etc.
+  # Too much magic. But I understand why they are popular. I'd just much rather have
+  # an explicit interface. 
+  #
   class Base < Hashie::Mash
     class << self
     
@@ -82,7 +83,21 @@ module StackExchangeQnA
       end
     end
 
-    # Hashie::Mash depends on method_missing to work, so doesn't this break its functionality?
+    # Interesting, but it means your class names have to match the 
+    # keys returned from StackExchange
+    # I'd prefer to do associations explicitly rather than 'automatically'
+    # Especially since StackExchange object model isn't likely to change a lot
+    #
+    # Also, someone might want a slightly different Question model than you implement,
+    #   or one that builds on your basic functionality.
+    # It is better to allow the user of your library to define their own Question
+    # class, and name it whatever they want.
+    #
+    # My approach was different, but in my Posterous API client I defined a class-
+    # level method `resources_map` which lets users define the classes that 
+    # wrap the resources:
+    #    https://github.com/ericgj/posterous2nanoc/blob/master/posterous/client.rb
+    #
     def method_missing(method_name, *args, &block)
       return super unless respond_to? association_url(method_name)
 
@@ -91,6 +106,8 @@ module StackExchangeQnA
       self[method_name] = response[method_name.to_s].map{ |r| association_class.new(r) }
     end
 
+    # this is probably safe to monkeypatch, but depends on the internal implementation of 
+    # Hashie::Mash. It leads me to wonder if you want to subclass Hashie::Mash at all.
     def respond_to?(method_name)
       return true if self.key? association_url(method_name)
 
