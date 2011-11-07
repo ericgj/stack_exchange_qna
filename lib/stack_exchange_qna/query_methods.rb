@@ -39,7 +39,17 @@ class StackExchangeQnA::QueryMethods
     @query_options[:total] || load_data.total
   end
 
+  # you don't need &block here, you can just yield(resource)
   def each(&block)
+    # This seems convoluted to me. Why not instead cache load_data right here?
+    # instead of caching it in Base.all and within the query_options hash?
+    # i.e. simply
+    #    load_data.each { |resource| yield(resource) }
+    # and
+    #    def load_data
+    #      @collection ||= @model.all(@query_options)
+    #    end
+    #
     resources = @query_options[:collection] || load_data
 
     resources.each{ |resource| block.call(resource) }

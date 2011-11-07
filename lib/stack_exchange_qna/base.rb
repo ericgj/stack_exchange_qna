@@ -1,6 +1,13 @@
 module StackExchangeQnA
+
+  # Not sure it's advisable to subclass Hashie::Mash. 
+  # Could you instead delegate to an internal instance of Hashie::Mash 
+  # (composition instead of subclass)?  See note on `method_missing` below.
   class Base < Hashie::Mash
     class << self
+    
+      # Why does `#all` return the parsed response wrapped in a QueryMethods object, 
+      # but `#find` returns the parsed response?  See note on `QueryMethods#each`
       def all(options={})
         response = make_request(resource_name, options)
         collection = parse_response_collection(response)
@@ -45,6 +52,18 @@ module StackExchangeQnA
         self.name.demodulize.underscore
       end
 
+      # You might want to consider `include HTTParty` in your Base class.
+      # This lets you declare parts of the URL rather than having to build the url 
+      # string manually, and does the query hash to string conversion, etc.
+      # Examples here: 
+      #    https://github.com/jnunemaker/httparty/tree/master/examples
+      #
+      # Here is my own example (Posterous API):
+      #    https://github.com/ericgj/posterous2nanoc/blob/master/posterous/client.rb
+      #
+      # Otherwise, if you just need a HTTP client, Net::HTTP or open-uri are 
+      # probably faster than HTTParty and do just as well and are included in Ruby
+      #
       def make_request(end_point, options={})
         client = StackExchangeQnA.client
         options.merge!(:key => client.api_key)
@@ -63,6 +82,7 @@ module StackExchangeQnA
       end
     end
 
+    # Hashie::Mash depends on method_missing to work, so doesn't this break its functionality?
     def method_missing(method_name, *args, &block)
       return super unless respond_to? association_url(method_name)
 
